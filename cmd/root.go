@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/russross/blackfriday"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -18,7 +19,21 @@ to access.`,
 	// Running the root command
 	Run: func(cmd *cobra.Command, args []string) {
 		port := viper.GetString("port")
+		http.HandleFunc("/status", Status)
+		http.HandleFunc("/markdown", GenerateMarkdown)
+		http.Handle("/", http.FileServer(http.Dir("public")))
 		fmt.Printf("Server started under port %v...\n", port)
-		http.ListenAndServe(fmt.Sprintf(":%v", port), http.FileServer(http.Dir(".")))
+		http.ListenAndServe(fmt.Sprintf(":%v", port), nil)
 	},
+}
+
+// GenerateMarkdown will convert the markdown from the request and return it as html.
+func GenerateMarkdown(rw http.ResponseWriter, r *http.Request) {
+	markdown := blackfriday.MarkdownCommon([]byte(r.FormValue("body")))
+	rw.Write(markdown)
+}
+
+// Status will give 'OK' if server is running.
+func Status(res http.ResponseWriter, req *http.Request) {
+	fmt.Fprint(res, "OK")
 }
